@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lumina AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>Settings</h3>
+            <button id="close-sidebar"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="setting-group notice-box">
+                <p><i class="fa-solid fa-triangle-exclamation"></i> <b>Storage Notice:</b> Images and videos are processed but not saved to history to save space.</p>
+            </div>
+
+            <div class="setting-group">
+                <label>Gemini API Key</label>
+                <input type="password" id="api-key-input" placeholder="Enter your Google AI API Key...">
+                <p class="info-text" style="margin-top:5px; font-size: 11px;">Get one at <a href="https://aistudio.google.com/" target="_blank" style="color: #008069;">Google AI Studio</a></p>
+            </div>
+
+            <div class="setting-group">
+                <label>Chat Actions</label>
+                <div class="action-buttons">
+                    <button id="download-btn"><i class="fa-solid fa-file-export"></i> Download TXT</button>
+                    <button id="clear-btn" class="danger"><i class="fa-solid fa-trash"></i> Clear All</button>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label>Appearance</label>
+                <select id="theme-selector">
+                    <option value="light">Light Mode</option>
+                    <option value="dark">Dark Mode</option>
+                </select>
+            </div>
+
+            <div class="setting-group">
+                <label>AI Display Name</label>
+                <input type="text" id="ai-name-input" placeholder="e.g. Lumina">
+            </div>
+
+            <div class="setting-group">
+                <label>AI Profile Picture (URL)</label>
+                <input type="text" id="ai-pfp-input" placeholder="Paste image link...">
+            </div>
+
+            <div class="setting-group">
+                <label>Instruction Style</label>
+                <select id="prompt-type">
+                    <option value="default">Default Prompt</option>
+                    <option value="custom">Custom Prompt</option>
+                </select>
+                <textarea id="custom-prompt-text" class="hidden" placeholder="Describe how the AI should behave..."></textarea>
+            </div>
+
+            <hr class="sidebar-divider">
+            
+            <div class="setting-group">
+                <label>About & Privacy</label>
+                <div class="info-text">
+                    <p><b>Privacy:</b> Messages and files are sent to Google Gemini API. History is stored locally on your device only.</p>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <label>Credits</label>
+                <a href="https://dextrecs.github.io/Dextrecs" target="_blank" class="credit-link">
+                    <i class="fa-solid fa-user-shield"></i> Developed by Dextrecs
+                </a>
+            </div>
+            
+            <button id="save-settings" class="save-btn">Apply Changes</button>
+        </div>
+    </div>
+
+    <div id="setup-overlay" class="setup-overlay hidden">
+        <div class="setup-card">
+            <h2>Welcome to Lumina</h2>
+            <p>Please enter your Gemini API Key to start chatting. Your key is stored locally on your device.</p>
+            <input type="password" id="setup-api-key" placeholder="Paste API Key here">
+            <button id="setup-save-btn">Get Started</button>
+            <p style="font-size: 11px; margin-top: 15px;">Don't have one? <a href="https://aistudio.google.com/" target="_blank" style="color: #008069;">Get it here</a></p>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <header>
+            <div class="header-left">
+                <button id="menu-btn"><i class="fa-solid fa-bars"></i></button>
+                <img id="header-pfp" src="assets/pfp.png" alt="AI">
+                <div class="header-info">
+                    <h3 id="header-name">Lumina</h3>
+                    <span class="status">Online</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button><i class="fa-solid fa-phone"></i></button>
+                <button><i class="fa-solid fa-video"></i></button>
+            </div>
+        </header>
+
+        <div id="chat-box" class="chat-box"></div>
+
+        <div class="input-area">
+            <div class="preview-container" id="file-preview"></div>
+            <div class="input-wrapper">
+                <button id="emoji-btn"><i class="fa-regular fa-face-smile"></i></button>
+                <input type="file" id="file-input" accept="image/*,video/*,application/pdf,.txt" multiple hidden>
+                <button id="attach-btn"><i class="fa-solid fa-paperclip"></i></button>
+                <input type="text" id="user-input" placeholder="Type a message" autocomplete="off">
+                <button id="send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="context-menu" class="context-menu">
+        <div class="menu-item" id="ctx-copy">Copy Text</div>
+        <div class="menu-item" id="ctx-delete">Remove Message</div>
+    </div>
+
+    <script type="importmap">
+        {
+          "imports": {
+            "@google/generative-ai": "https://esm.run/@google/generative-ai"
+          }
+        }
+    </script>
+    <script type="module" src="script.js"></script>
+</body>
+</html>
