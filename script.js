@@ -1,7 +1,6 @@
 /**
- * Lumina AI
- * Copyright (C) 2024 Dextrecs
- * Licensed under the GNU General Public License v3.0
+ * Lumina AI - Comprehensive Logic
+ * Copyright (C) 2025 Dextrecs
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -31,17 +30,11 @@ function init() {
     applySettings();
     renderHistory();
     
-    // Check if API Key exists, if not show setup
     if (!settings.apiKey) {
         document.getElementById("setup-overlay").classList.remove("hidden");
     }
 
-    if (!localStorage.getItem("storage_warning_seen")) {
-        alert("💡 Note: Chat history saves text only. Images and videos will not persist after a page reload.");
-        localStorage.setItem("storage_warning_seen", "true");
-    }
-
-    // Populate Sidebar Inputs
+    // Sync sidebar fields
     document.getElementById("theme-selector").value = settings.theme;
     document.getElementById("ai-name-input").value = settings.aiName;
     document.getElementById("ai-pfp-input").value = settings.aiPfp;
@@ -57,6 +50,8 @@ function init() {
     promptTypeSel.onchange = (e) => {
         customPromptArea.classList.toggle('hidden', e.target.value !== 'custom');
     };
+    
+    scrollToBottom();
 }
 
 async function getModel() {
@@ -66,8 +61,11 @@ async function getModel() {
     }
     const genAI = new GoogleGenerativeAI(settings.apiKey);
     const system = settings.promptType === 'custom' ? settings.customPrompt : "You are Lumina, a friendly AI partner.";
-    // Using 1.5-flash as it is currently the standard stable version
     return genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: system });
+}
+
+function scrollToBottom() {
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 function appendMessage(role, text, timestamp, files = []) {
@@ -77,20 +75,22 @@ function appendMessage(role, text, timestamp, files = []) {
 
     let html = `<div class="msg-content">`;
     files.forEach(f => {
-        if(f.mimeType.startsWith('image')) html += `<img src="data:${f.mimeType};base64,${f.data}" style="max-width:100%; border-radius:5px; margin-bottom:5px;">`;
+        if(f.mimeType.startsWith('image')) {
+            html += `<img src="data:${f.mimeType};base64,${f.data}" style="max-width:100%; border-radius:5px; margin-bottom:5px; display:block;">`;
+        }
     });
 
-    let formatted = text;
-    formatted = formatted.replace(/^\*\s/gm, '• ');
-    formatted = formatted.replace(/(?:```|'''''')([\s\S]*?)(?:```|'''''')/g, '<pre><code>$1</code></pre>');
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-    formatted = formatted.replace(/\n/g, '<br>');
+    let formatted = text
+        .replace(/^\*\s/gm, '• ')
+        .replace(/(?:```)([\s\S]*?)(?:```)/g, '<pre><code>$1</code></pre>')
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>');
 
     html += `${formatted}</div><div class="timestamp">${timestamp}</div>`;
     msgDiv.innerHTML = html;
     chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    scrollToBottom();
     return msgDiv;
 }
 
@@ -105,7 +105,10 @@ async function handleChat() {
     localStorage.setItem("wa_chat_history", JSON.stringify(chatHistory));
 
     const modelInput = [text, ...uploadedFiles.map(f => ({ inlineData: f }))];
-    userInput.value = ""; uploadedFiles = []; previewContainer.innerHTML = ""; sendBtn.disabled = true;
+    userInput.value = ""; 
+    uploadedFiles = []; 
+    previewContainer.innerHTML = ""; 
+    sendBtn.disabled = true;
 
     const loading = appendMessage("model", "•••", "");
 
@@ -118,8 +121,11 @@ async function handleChat() {
         appendMessage("model", aiText, aiTime);
         chatHistory.push({ role: "model", text: aiText, timestamp: aiTime });
         localStorage.setItem("wa_chat_history", JSON.stringify(chatHistory));
-    } catch (e) { loading.innerText = "Error: " + e.message; }
-    finally { sendBtn.disabled = false; }
+    } catch (e) { 
+        loading.innerText = "Error: " + e.message; 
+    } finally { 
+        sendBtn.disabled = false; 
+    }
 }
 
 attachBtn.onclick = () => fileInput.click();
@@ -130,9 +136,14 @@ fileInput.onchange = async (e) => {
             const base64 = reader.result.split(',')[1];
             uploadedFiles.push({ mimeType: file.type, data: base64 });
             let preview;
-            if(file.type.startsWith('image')) { preview = document.createElement("img"); preview.src = reader.result; }
-            else if(file.type.startsWith('video')) { preview = document.createElement("video"); preview.src = URL.createObjectURL(file); }
-            else { preview = document.createElement("div"); preview.className="preview-doc"; preview.innerHTML='<i class="fa-solid fa-file"></i>'; }
+            if(file.type.startsWith('image')) { 
+                preview = document.createElement("img"); 
+                preview.src = reader.result; 
+            } else { 
+                preview = document.createElement("div"); 
+                preview.className="preview-doc"; 
+                preview.innerHTML='<i class="fa-solid fa-file"></i>'; 
+            }
             previewContainer.appendChild(preview);
         };
         reader.readAsDataURL(file);
@@ -142,7 +153,6 @@ fileInput.onchange = async (e) => {
 document.getElementById("menu-btn").onclick = () => sidebar.classList.add("open");
 document.getElementById("close-sidebar").onclick = () => sidebar.classList.remove("open");
 
-// Sidebar Save
 document.getElementById("save-settings").onclick = () => {
     settings.apiKey = document.getElementById("api-key-input").value.trim();
     settings.theme = document.getElementById("theme-selector").value;
@@ -155,7 +165,6 @@ document.getElementById("save-settings").onclick = () => {
     sidebar.classList.remove("open");
 };
 
-// Setup Overlay Save
 document.getElementById("setup-save-btn").onclick = () => {
     const key = document.getElementById("setup-api-key").value.trim();
     if (key) {
@@ -163,8 +172,6 @@ document.getElementById("setup-save-btn").onclick = () => {
         localStorage.setItem("wa_settings", JSON.stringify(settings));
         document.getElementById("setup-overlay").classList.add("hidden");
         document.getElementById("api-key-input").value = key;
-    } else {
-        alert("Please enter a valid key.");
     }
 };
 
@@ -176,16 +183,22 @@ function applySettings() {
 
 function renderHistory() {
     chatBox.innerHTML = "";
-    chatHistory.forEach(m => appendMessage(m.role, m.hasFile ? "[File] " + m.text : m.text, m.timestamp));
+    chatHistory.forEach(m => appendMessage(m.role, m.text, m.timestamp));
 }
 
 document.getElementById("download-btn").onclick = () => {
     const txt = chatHistory.map(m => `[${m.timestamp}] ${m.role}: ${m.text}`).join('\n');
-    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], {type:'text/plain'}));
+    const blob = new Blob([txt], {type:'text/plain'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download='chat.txt'; a.click();
 };
 
-document.getElementById("clear-btn").onclick = () => { if(confirm("Clear chat?")) { localStorage.clear(); location.reload(); }};
+document.getElementById("clear-btn").onclick = () => { 
+    if(confirm("Clear chat?")) { 
+        localStorage.removeItem("wa_chat_history"); 
+        location.reload(); 
+    }
+};
 
 let longPressTimer;
 function addLongPressEvent(el) {
@@ -193,14 +206,27 @@ function addLongPressEvent(el) {
     el.ontouchstart = (e) => { longPressTimer = setTimeout(() => showMenu(e.touches[0].pageX, e.touches[0].pageY, el), 600); };
     el.ontouchend = () => clearTimeout(longPressTimer);
 }
+
 function showMenu(x, y, target) {
     contextTarget = target;
     const menu = document.getElementById("context-menu");
-    menu.style.display = "block"; menu.style.left = x + "px"; menu.style.top = y + "px";
+    menu.style.display = "block";
+    menu.style.left = x + "px"; 
+    menu.style.top = y + "px";
 }
+
 document.addEventListener("click", () => document.getElementById("context-menu").style.display = "none");
+
 document.getElementById("ctx-delete").onclick = () => contextTarget.remove();
-document.getElementById("ctx-copy").onclick = () => navigator.clipboard.writeText(contextTarget.querySelector(".msg-content").innerText);
+document.getElementById("ctx-copy").onclick = () => {
+    const text = contextTarget.querySelector(".msg-content").innerText;
+    navigator.clipboard.writeText(text);
+};
+
+// Handle mobile viewport changes (keyboard)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', scrollToBottom);
+}
 
 init();
 sendBtn.onclick = handleChat;
