@@ -4,7 +4,8 @@ Listen, we all know the drill. You want an AI that doesn't look like a boring sp
 
 ![License](https://img.shields.io/badge/license-GPL--3.0-green)
 ![Vibe](https://img.shields.io/badge/vibe-immaculate-brightgreen)
-![Powered By](https://img.shields.io/badge/AI-Gemini%201.5%20Flash-orange)
+![Powered by Gemini](https://img.shields.io/badge/Powered%20by-Gemini%202.5-orange?style=flat-square&logo=google-gemini)
+
 
 ---
 
