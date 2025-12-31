@@ -12,6 +12,9 @@ const fileInput = document.getElementById("file-input");
 const attachBtn = document.getElementById("attach-btn");
 const previewContainer = document.getElementById("file-preview");
 const sidebar = document.getElementById("sidebar");
+const emojiBtn = document.getElementById("emoji-btn");
+const emojiContainer = document.getElementById("emoji-picker-container");
+const picker = document.querySelector('emoji-picker');
 
 let settings = JSON.parse(localStorage.getItem("wa_settings")) || {
     aiName: "Lumina", 
@@ -19,7 +22,8 @@ let settings = JSON.parse(localStorage.getItem("wa_settings")) || {
     theme: "light", 
     promptType: "default", 
     customPrompt: "",
-    apiKey: ""
+    apiKey: "",
+    model: "gemini-2.5-flash"
 };
 
 let chatHistory = JSON.parse(localStorage.getItem("wa_chat_history")) || [];
@@ -39,6 +43,7 @@ function init() {
     document.getElementById("ai-name-input").value = settings.aiName;
     document.getElementById("ai-pfp-input").value = settings.aiPfp;
     document.getElementById("api-key-input").value = settings.apiKey;
+    document.getElementById("model-selector").value = settings.model || "gemini-2.5-flash";
     
     const promptTypeSel = document.getElementById("prompt-type");
     const customPromptArea = document.getElementById("custom-prompt-text");
@@ -54,6 +59,24 @@ function init() {
     scrollToBottom();
 }
 
+// Emoji Selection Logic
+emojiBtn.onclick = (e) => {
+    e.stopPropagation();
+    emojiContainer.classList.toggle("hidden");
+};
+
+picker.addEventListener('emoji-click', event => {
+    userInput.value += event.detail.unicode;
+    userInput.focus();
+});
+
+// Close emoji picker when clicking outside
+document.addEventListener('click', (e) => {
+    if (!emojiContainer.contains(e.target) && e.target !== emojiBtn) {
+        emojiContainer.classList.add("hidden");
+    }
+});
+
 async function getModel() {
     if (!settings.apiKey) {
         document.getElementById("setup-overlay").classList.remove("hidden");
@@ -61,7 +84,11 @@ async function getModel() {
     }
     const genAI = new GoogleGenerativeAI(settings.apiKey);
     const system = settings.promptType === 'custom' ? settings.customPrompt : "You are Lumina, a friendly AI partner.";
-    return genAI.getGenerativeModel({ model: "gemini-2.5-flash", systemInstruction: system });
+    
+    return genAI.getGenerativeModel({ 
+        model: settings.model || "gemini-2.5-flash", 
+        systemInstruction: system 
+    });
 }
 
 function scrollToBottom() {
@@ -74,6 +101,7 @@ function appendMessage(role, text, timestamp, files = []) {
     addLongPressEvent(msgDiv);
 
     let html = `<div class="msg-content">`;
+    
     files.forEach(f => {
         if(f.mimeType.startsWith('image')) {
             html += `<img src="data:${f.mimeType};base64,${f.data}" style="max-width:100%; border-radius:5px; margin-bottom:5px; display:block;">`;
@@ -81,11 +109,19 @@ function appendMessage(role, text, timestamp, files = []) {
     });
 
     let formatted = text
-        .replace(/^\*\s/gm, '• ')
-        .replace(/(?:```)([\s\S]*?)(?:```)/g, '<pre><code>$1</code></pre>')
+        .replace(/```(?:[\w-]+)?\n?([\s\S]*?)```/g, (match, code) => {
+            const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return `<pre><code>${escaped}</code></pre>`;
+        })
+        .replace(/`([^`]+)`/g, (match, code) => {
+            const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return `<code>${escaped}</code>`;
+        })
         .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\n/g, '<br>');
+        .replace(/^\*\s/gm, '• ')
+        .split(/(<pre>[\s\S]*?<\/pre>)/g).map(part => {
+            return part.startsWith('<pre>') ? part : part.replace(/\n/g, '<br>');
+        }).join('');
 
     html += `${formatted}</div><div class="timestamp">${timestamp}</div>`;
     msgDiv.innerHTML = html;
@@ -97,6 +133,8 @@ function appendMessage(role, text, timestamp, files = []) {
 async function handleChat() {
     const text = userInput.value.trim();
     if (!text && uploadedFiles.length === 0) return;
+    
+    emojiContainer.classList.add("hidden"); // Close picker on send
     
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     appendMessage("user", text, time, uploadedFiles);
@@ -116,13 +154,17 @@ async function handleChat() {
         const model = await getModel();
         const result = await model.generateContent(modelInput);
         const aiText = (await result.response).text();
+        
         chatBox.removeChild(loading);
         const aiTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         appendMessage("model", aiText, aiTime);
+        
         chatHistory.push({ role: "model", text: aiText, timestamp: aiTime });
         localStorage.setItem("wa_chat_history", JSON.stringify(chatHistory));
     } catch (e) { 
-        loading.innerText = "Error: " + e.message; 
+        chatBox.removeChild(loading);
+        let errorMessage = e.message.includes("429") ? "⚠️ <b>Quota Limit Reached.</b>" : "Error: " + e.message;
+        appendMessage("model", errorMessage, "");
     } finally { 
         sendBtn.disabled = false; 
     }
@@ -135,15 +177,8 @@ fileInput.onchange = async (e) => {
         reader.onloadend = () => {
             const base64 = reader.result.split(',')[1];
             uploadedFiles.push({ mimeType: file.type, data: base64 });
-            let preview;
-            if(file.type.startsWith('image')) { 
-                preview = document.createElement("img"); 
-                preview.src = reader.result; 
-            } else { 
-                preview = document.createElement("div"); 
-                preview.className="preview-doc"; 
-                preview.innerHTML='<i class="fa-solid fa-file"></i>'; 
-            }
+            let preview = file.type.startsWith('image') ? document.createElement("img") : document.createElement("div");
+            if(file.type.startsWith('image')) { preview.src = reader.result; } else { preview.className="preview-doc"; preview.innerHTML='<i class="fa-solid fa-file"></i>'; }
             previewContainer.appendChild(preview);
         };
         reader.readAsDataURL(file);
@@ -155,6 +190,7 @@ document.getElementById("close-sidebar").onclick = () => sidebar.classList.remov
 
 document.getElementById("save-settings").onclick = () => {
     settings.apiKey = document.getElementById("api-key-input").value.trim();
+    settings.model = document.getElementById("model-selector").value;
     settings.theme = document.getElementById("theme-selector").value;
     settings.aiName = document.getElementById("ai-name-input").value || "Lumina";
     settings.aiPfp = document.getElementById("ai-pfp-input").value || "assets/pfp.png";
@@ -194,10 +230,7 @@ document.getElementById("download-btn").onclick = () => {
 };
 
 document.getElementById("clear-btn").onclick = () => { 
-    if(confirm("Clear chat?")) { 
-        localStorage.removeItem("wa_chat_history"); 
-        location.reload(); 
-    }
+    if(confirm("Clear chat?")) { localStorage.removeItem("wa_chat_history"); location.reload(); }
 };
 
 let longPressTimer;
@@ -210,23 +243,14 @@ function addLongPressEvent(el) {
 function showMenu(x, y, target) {
     contextTarget = target;
     const menu = document.getElementById("context-menu");
-    menu.style.display = "block";
-    menu.style.left = x + "px"; 
-    menu.style.top = y + "px";
+    menu.style.display = "block"; menu.style.left = x + "px"; menu.style.top = y + "px";
 }
 
 document.addEventListener("click", () => document.getElementById("context-menu").style.display = "none");
-
 document.getElementById("ctx-delete").onclick = () => contextTarget.remove();
-document.getElementById("ctx-copy").onclick = () => {
-    const text = contextTarget.querySelector(".msg-content").innerText;
-    navigator.clipboard.writeText(text);
-};
+document.getElementById("ctx-copy").onclick = () => navigator.clipboard.writeText(contextTarget.querySelector(".msg-content").innerText);
 
-// Handle mobile viewport changes (keyboard)
-if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', scrollToBottom);
-}
+if (window.visualViewport) { window.visualViewport.addEventListener('resize', scrollToBottom); }
 
 init();
 sendBtn.onclick = handleChat;
